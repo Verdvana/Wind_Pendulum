@@ -1,0 +1,331 @@
+C51 COMPILER V9.00   CEJU                                                                  05/17/2015 18:23:05 PAGE 1   
+
+
+C51 COMPILER V9.00, COMPILATION OF MODULE CEJU
+OBJECT MODULE PLACED IN ceju.OBJ
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE ceju.c COMPACT BROWSE DEBUG OBJECTEXTEND TABS(2)
+
+line level    source
+
+   1          #include <STC12C5A60S2.H>
+   2          #include <intrins.h>  
+   3          #include "ceju.h"  
+   4          #include <STDIO.H> 
+   5          #include "usart.h"
+   6          #include "yundong.h"
+   7          #include "find_road.h"
+   8          #include "timer.h"
+   9           
+  10          #define uchar unsigned char  
+  11          
+  12          #define DOUBLE_CRYSTAL_FREQ 11.0592 
+  13          
+  14          #define iMAX_LEN 21684  
+  15          #define iMIN_LEN 109  
+  16            
+  17          unsigned int miDistance=0; //测距的距离值 
+  18          uchar mcDistanceErr=0; //测距错误标记 
+  19          bit mbDelayOverFlg = 1; //延迟程序的控制标记 
+  20          uchar mbDelay10H, mbDelay10L; //测距的小单位时间延迟 
+  21          
+  22          uint8_t xdata show_buf[128];
+  23          unsigned int iOld=0;  
+  24          
+  25          uint16_t K1 = 1,K2 = 2,K3 = 3,K4 = 4,K5 = 5,K6 = 6,K7 = 7;
+  26           
+  27          extern uint8_t flag1,flag2,flag3;
+  28          /*------------------------------------------------------- 
+  29           *初始化函数
+  30           *@return void 
+  31           *-------------------------------------------------------*/  
+  32          void InitUltrasonicDistance(void)  
+  33          {  
+  34   1          unsigned int iTmp;  
+  35   1        
+  36   1          TMOD |=0x01; //
+  37   1          
+  38   1          TH0=0; // 
+  39   1          TL0=0; //  
+  40   1          TR0=0; //  
+  41   1          ET0=1; //  
+  42   1        
+  43   1          iTmp = (unsigned int)(65536-(10000/(12/DOUBLE_CRYSTAL_FREQ))); //10ms???????  
+  44   1          mbDelay10H = iTmp >> 8; //?8??  
+  45   1          mbDelay10L = iTmp &0x0F; //?8??  
+  46   1      }  
+  47            
+  48          /**------------------------------------------------------- 
+  49           * 定时器函数，T0计数器使用1号中断
+  50           *   ??:????????,???????,????>60ms 
+  51           *         ?????????,time=65.535ms,mbDelayCtlFlg=1 
+  52           * -------------------------------------------------------  
+  53          */  
+  54          void tim0_()interrupt 1  
+  55          {    
+C51 COMPILER V9.00   CEJU                                                                  05/17/2015 18:23:05 PAGE 2   
+
+  56   1          TR0 = 0; //T0?????  
+  57   1          mbDelayOverFlg = 1; //??????  
+  58   1      }  
+  59            
+  60          /*------------------------------------------------------- 
+  61           *启动超声波测距模块，TX保持22us的高电平
+  62           *-------------------------------------------------------*/  
+  63          void StartModule()  
+  64          {  
+  65   1          TX = 1; //控制端1  
+  66   1          _nop_();  
+  67   1          _nop_();  
+  68   1          _nop_();  
+  69   1          _nop_();  
+  70   1          _nop_();  
+  71   1          _nop_();  
+  72   1          _nop_();  
+  73   1          _nop_();  
+  74   1          _nop_();  
+  75   1          _nop_();  
+  76   1          _nop_();  
+  77   1          _nop_();  
+  78   1          _nop_();  
+  79   1          _nop_();  
+  80   1          _nop_();  
+  81   1          _nop_();  
+  82   1          _nop_();  
+  83   1          _nop_();  
+  84   1          _nop_();  
+  85   1          _nop_();  
+  86   1          _nop_();  
+  87   1          TX=0; //控制端置0，等待接收回波 
+  88   1      }  
+  89            
+  90          void StartModule_1()  
+  91          {  
+  92   1          TX1 = 1; //控制端1  
+  93   1          _nop_();  
+  94   1          _nop_();  
+  95   1          _nop_();  
+  96   1          _nop_();  
+  97   1          _nop_();  
+  98   1          _nop_();  
+  99   1          _nop_();  
+ 100   1          _nop_();  
+ 101   1          _nop_();  
+ 102   1          _nop_();  
+ 103   1          _nop_();  
+ 104   1          _nop_();  
+ 105   1          _nop_();  
+ 106   1          _nop_();  
+ 107   1          _nop_();  
+ 108   1          _nop_();  
+ 109   1          _nop_();  
+ 110   1          _nop_();  
+ 111   1          _nop_();  
+ 112   1          _nop_();  
+ 113   1          _nop_();  
+ 114   1          TX1=0; //控制端置0，等待接收回波 
+ 115   1      }  
+ 116          
+ 117          /*------------------------------------------------------- 
+C51 COMPILER V9.00   CEJU                                                                  05/17/2015 18:23:05 PAGE 3   
+
+ 118           *获取最近一次测得的距离 
+ 119           *  ??:??????,????100ms-150ms???? 
+ 120           *-------------------------------------------------------*/  
+ 121          unsigned int getDistance(void)  
+ 122          {   
+ 123   1          return miDistance;
+ 124   1              sprintf(show_buf,"CESHI : %d",K1);
+ 125   1              my_printf(show_buf);    
+ 126   1      } 
+ 127          
+ 128            
+ 129          /*------------------------------------------------------- 
+ 130           *获取最近一次测距的状态
+ 131           *@return unsigned int 0:?? / 1:(err)???? /2:(err)??? 
+ 132           *-------------------------------------------------------*/  
+ 133          unsigned int getDistanceState(void)  
+ 134          {     
+ 135   1          return mcDistanceErr; 
+ 136   1      
+ 137   1      }  
+ 138            
+ 139          /*------------------------------------------------------- 
+ 140           *检查测距操作 
+ 141           *  ??:????????,????getDistance()?getDistanceState()???? 
+ 142           *  ??:??????,????100ms-150ms???? 
+ 143           * @return 0:?????? / 1:????????????? 
+ 144           *-------------------------------------------------------*/  
+ 145          unsigned char refreshDistance(void)  
+ 146          {
+ 147   1          unsigned int i; //超量程检测变量  
+ 148   1          unsigned int iCycle; //计算总周期 
+ 149   1          if (1 == mbDelayOverFlg)//判断是否在延迟期  
+ 150   1          {     
+ 151   2              i = iMAX_LEN; //置入最大的量程  
+ 152   2              StartModule(); //发送测距模块的启动信号  
+ 153   2              while(!RX && i-->0);  
+ 154   2              //判断结果 
+ 155   2              if (i>0) //小于N米  
+ 156   2              {       
+ 157   3                  TR0=1; //收到回波的上边沿(RX=1),打开计数器 
+ 158   3                  while(RX);//当回波RX=0时，测距结束
+ 159   3                  TR0=0; //关闭定时器(需要一个时钟周期)  nnnnnnn
+ 160   3                  iCycle = (TH0 * 256 + TL0) + 1;         //计算总消耗的周期
+ 161   3                  TH0=0;  
+ 162   3                  TL0=0;  
+ 163   3            
+ 164   3                  if (iCycle <= iMIN_LEN)  
+ 165   3                  {  
+ 166   4                      mcDistanceErr = 1;//距离太近 
+ 167   4                      mbDelayOverFlg = 0; //复位延迟标志 
+ 168   4                      TH0 = mbDelay10H; //重装计数器高8  
+ 169   4                      TL0 = mbDelay10L; //重装计数器低8位
+ 170   4                      TR0 = 1; //启动延迟计数器 
+ 171   4                  }  
+ 172   3                  else  
+ 173   3                  {  
+ 174   4                      //(iCycle * 1.0851 * 0.17 / 10) => iCycle * 0.01844670   
+ 175   4                      miDistance = (unsigned int)(iCycle * 0.01844670);//(??cm)  
+ 176   4                      mcDistanceErr = 0;//测距正常值   
+ 177   4                      mbDelayOverFlg = 0; //复位延迟标志  
+ 178   4                      TH0 = 0; //T0,高位复位  
+ 179   4                      TL0 = 0; //T0,地位复位 
+C51 COMPILER V9.00   CEJU                                                                  05/17/2015 18:23:05 PAGE 4   
+
+ 180   4                      TR0=1;//打开延迟计数器(此时不测距,所以不影响测距的计算)
+ 181   4                  }  
+ 182   3              }  
+ 183   2              else   
+ 184   2                  mcDistanceErr = 2; //超量程  
+ 185   2        
+ 186   2              return 0; //完成测距操作 
+ 187   2          }  
+ 188   1          else //正在延迟等待下一次的测距  
+ 189   1              return 1;  
+ 190   1      }
+ 191          
+ 192          
+ 193          
+ 194          
+ 195          unsigned char refreshDistance_2(void)  
+ 196          {
+ 197   1          unsigned int i; //超量程检测变量  
+ 198   1          unsigned int iCycle; //计算总周期 
+ 199   1          if (1 == mbDelayOverFlg)//判断是否在延迟期  
+ 200   1          {     
+ 201   2              i = iMAX_LEN; //置入最大的量程  
+ 202   2              StartModule_1(); //发送测距模块的启动信号  
+ 203   2              while(!RX1 && i-->0);  
+ 204   2              //判断结果 
+ 205   2              if (i>0) //小于N米  
+ 206   2              {       
+ 207   3                  TR0=1; //收到回波的上边沿(RX=1),打开计数器 
+ 208   3                  while(RX1);//当回波RX=0时，测距结束
+ 209   3                  TR0=0; //关闭定时器(需要一个时钟周期)  nnnnnnn
+ 210   3                  iCycle = (TH0 * 256 + TL0) + 1;         //计算总消耗的周期
+ 211   3                  TH0=0;  
+ 212   3                  TL0=0;  
+ 213   3            
+ 214   3                  if (iCycle <= iMIN_LEN)  
+ 215   3                  {  
+ 216   4                      mcDistanceErr = 1;//距离太近 
+ 217   4                      mbDelayOverFlg = 0; //复位延迟标志 
+ 218   4                      TH0 = mbDelay10H; //重装计数器高8  
+ 219   4                      TL0 = mbDelay10L; //重装计数器低8位
+ 220   4                      TR0 = 1; //启动延迟计数器 
+ 221   4                  }  
+ 222   3                  else  
+ 223   3                  {  
+ 224   4                      //(iCycle * 1.0851 * 0.17 / 10) => iCycle * 0.01844670   
+ 225   4                      miDistance = (unsigned int)(iCycle * 0.01844670);//(??cm)  
+ 226   4                      mcDistanceErr = 0;//测距正常值   
+ 227   4                      mbDelayOverFlg = 0; //复位延迟标志  
+ 228   4                      TH0 = 0; //T0,高位复位  
+ 229   4                      TL0 = 0; //T0,地位复位 
+ 230   4                      TR0=1;//打开延迟计数器(此时不测距,所以不影响测距的计算)
+ 231   4                  }  
+ 232   3              }  
+ 233   2              else   
+ 234   2                  mcDistanceErr = 2; //超量程  
+ 235   2        
+ 236   2              return 0; //完成测距操作 
+ 237   2          }  
+ 238   1          else //正在延迟等待下一次的测距  
+ 239   1              return 1;  
+ 240   1      }
+ 241          
+C51 COMPILER V9.00   CEJU                                                                  05/17/2015 18:23:05 PAGE 5   
+
+ 242          
+ 243          
+ 244          
+ 245          void chaoshengbo(void)  
+ 246          {           
+ 247   1      
+ 248   1        
+ 249   1          //当调用测距函数后，返回值为0，表示测距成功，否则测距函数正在延迟中  
+ 250   1            if (0 == refreshDistance())  
+ 251   1            {  
+ 252   2                //当取值有效时，如果与前次没有变化，则不作更新
+ 253   2                if (0 == getDistanceState() && (iOld != getDistance()))       
+ 254   2                {         
+ 255   3                  iOld = getDistance(); 
+ 256   3                  sprintf(show_buf,"JuLi is : %d",iOld);
+ 257   3                  my_printf(show_buf);  
+ 258   3                  if(iOld < 10)
+ 259   3                  {
+ 260   4      //              flag1 = 1;
+ 261   4      //              left(480,&flag1);
+ 262   4                    unsigned int miDistance=0;
+ 263   4                    uchar mcDistanceErr=0;
+ 264   4                    flag2 = 1;
+ 265   4                  }         
+ 266   3              }  
+ 267   2            }         
+ 268   1      }  
+ 269          
+ 270          
+ 271          void chaoshengbo_2(void)  
+ 272          {    
+ 273   1          //当调用测距函数后，返回值为0，表示测距成功，否则测距函数正在延迟中  
+ 274   1          if (0 == refreshDistance_2())  
+ 275   1          {  
+ 276   2      
+ 277   2              //当取值有效时，如果与前次没有变化，则不作更新
+ 278   2              if (0 == getDistanceState() && (iOld != getDistance()))  
+ 279   2              {  
+ 280   3                  iOld = getDistance(); 
+ 281   3                  sprintf(show_buf,"JuLi22 is : %d",iOld);
+ 282   3                  my_printf(show_buf);
+ 283   3      //            if(iOld < 10)
+ 284   3      //            {
+ 285   3      //              Set_PWM1(17);
+ 286   3      //              Set_PWM2(11);
+ 287   3      //              EN1 = EN2 = 1;
+ 288   3      //            }
+ 289   3      //            else
+ 290   3      //            {
+ 291   3      //              Set_PWM1(11); 
+ 292   3      //              Set_PWM2(17);
+ 293   3      //              EN1 = EN2 = 1;
+ 294   3      //            }
+ 295   3              }  
+ 296   2          }         
+ 297   1      }  
+ 298          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    568    ----
+   CONSTANT SIZE    =     39    ----
+C51 COMPILER V9.00   CEJU                                                                  05/17/2015 18:23:05 PAGE 6   
+
+   XDATA SIZE       =    128    ----
+   PDATA SIZE       =     21       3
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      1    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

@@ -1,0 +1,11 @@
+"STARTUP.obj",
+"main.obj",
+"usart.obj",
+"timer.obj",
+"PWM.obj",
+"1602.obj",
+"find_road.obj",
+"yundong.obj",
+"ceju.obj" 
+TO "usart_test2" 
+RAMSIZE(256) 

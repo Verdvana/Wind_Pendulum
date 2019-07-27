@@ -1,0 +1,231 @@
+C51 COMPILER V9.00   1602                                                                  05/17/2015 17:52:54 PAGE 1   
+
+
+C51 COMPILER V9.00, COMPILATION OF MODULE 1602
+OBJECT MODULE PLACED IN 1602.OBJ
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE 1602.c COMPACT BROWSE DEBUG OBJECTEXTEND TABS(2)
+
+line level    source
+
+   1          #include <STC12C5A.H>
+   2          #include <1602.h>
+   3          #include <intrins.h>
+   4          #include "MY_DEFINE.H"
+   5          #include "timer.h"
+   6          #include "stdio.h"
+   7          #include "usart.h"
+   8          
+   9          
+  10          #define RS_CLR RS=0 
+  11          #define RS_SET RS=1
+  12          
+  13          #define RW_CLR RW=0 
+  14          #define RW_SET RW=1 
+  15          
+  16          #define EN_CLR EN=0
+  17          #define EN_SET EN=1
+  18          
+  19          #define DataPort P0        
+  20          //extern uint8_t usart1_data;
+  21          extern uint32_t System_us;
+  22          
+  23          extern uint16_t M;
+  24          
+  25          uint16_t D = 0;
+  26          
+  27          extern uint32_t flag;
+  28          
+  29          uint8_t display[] = {0x30,0x31,0x32,0x33,0x34,0x35,0x36,0x37,0x38,0x39};
+  30          uint8_t display1[3],display2[3],display3[3];
+  31          
+  32          extern uint8_t flag1,flag2,flag3,flag4;
+  33          
+  34          void Delay_us(unsigned char t)
+  35          {
+  36   1        while(--t); //T = t*2+5 us
+  37   1      }
+  38          
+  39          void Delay_ms(unsigned char t)
+  40          {
+  41   1        while(t--)
+  42   1        {
+  43   2          Delay_us(245);
+  44   2          Delay_us(245);
+  45   2        }
+  46   1      }
+  47          
+  48          
+  49          bit LCD_Check_Busy(void)  //判忙
+  50          {
+  51   1      //  DataPort = 0xFF;
+  52   1        RS_CLR;
+  53   1        RW_SET;
+  54   1        EN_CLR;
+  55   1        Delay_us(2);
+C51 COMPILER V9.00   1602                                                                  05/17/2015 17:52:54 PAGE 2   
+
+  56   1        EN_SET;
+  57   1        return(bit)(DataPort & 0x80);
+  58   1      }
+  59          
+  60          
+  61          void LCD_Write_Com(unsigned char com)   //写命令函数
+  62          {  
+  63   1         while(LCD_Check_Busy()); //忙则等待
+  64   1         RS_CLR; 
+  65   1         RW_CLR; 
+  66   1         DataPort= com; 
+  67   1          EN_SET; 
+  68   1         _nop_(); 
+  69   1         EN_CLR;
+  70   1      }
+  71          
+  72          void LCD_Write_Data(unsigned char Data) //写数据
+  73          { 
+  74   1         while(LCD_Check_Busy()); //忙则等待
+  75   1         RS_SET; 
+  76   1         RW_CLR;  
+  77   1         DataPort= Data; 
+  78   1         EN_SET; 
+  79   1        _nop_();
+  80   1         EN_CLR;  
+  81   1      }
+  82          
+  83          //void LCD_Write_Char(unsigned char x,unsigned char y,unsigned char Data)   //写入字符
+  84          // {     
+  85          // if (y == 0) 
+  86          //  {     
+  87          //  LCD_Write_Com(0x80 + x);     
+  88          //  }    
+  89          // else 
+  90          //  {     
+  91          //  LCD_Write_Com(0xC0 + x);     
+  92          //  }        
+  93          // LCD_Write_Data( Data);  
+  94          // }
+  95          // 
+  96           
+  97           
+  98           
+  99          void LCD_Clear(void)   //清屏
+ 100           { 
+ 101   1         LCD_Write_Com(0x01); 
+ 102   1         Delay_ms(5);
+ 103   1       }
+ 104          // 
+ 105           void lcd_pos(uint8_t pos)   //显示位置
+ 106          {                          
+ 107   1        LCD_Write_Com(pos | 0x80);  //数据指针=80+地址变量
+ 108   1      }
+ 109           
+ 110          
+ 111          
+ 112          void LCD_Init(void)        //初始化
+ 113          {
+ 114   1         LCD_Write_Com(0x38);    /*显示模式设置*/ 
+ 115   1         Delay_ms(5); 
+ 116   1         LCD_Write_Com(0x38); 
+ 117   1         Delay_ms(5);
+C51 COMPILER V9.00   1602                                                                  05/17/2015 17:52:54 PAGE 3   
+
+ 118   1         LCD_Write_Com(0x38); 
+ 119   1         Delay_ms(5); 
+ 120   1         LCD_Write_Com(0x38);  
+ 121   1         LCD_Write_Com(0x08);    /*显示关闭*/ 
+ 122   1         LCD_Write_Com(0x01);    /*显示清屏*/ 
+ 123   1         LCD_Write_Com(0x06);    /*显示光标移动设置*/ 
+ 124   1         Delay_ms(5);
+ 125   1         LCD_Write_Com(0x0C);    /*显示开及光标设置*/
+ 126   1      }
+ 127          
+ 128          
+ 129          //void xianshi(void)
+ 130          //{
+ 131          //  ShiZhong();
+ 132          //  Show_num(D);
+ 133          //}
+ 134          
+ 135          
+ 136          void EXINT0_handle(void) interrupt 0  //外部中断
+ 137          { 
+ 138   1        EX0 = 0;
+ 139   1        Delay_ms(5);
+ 140   1        if(!P32)
+ 141   1        {
+ 142   2          if(Get_miao() < 5)
+ 143   2           D++;
+ 144   2          else
+ 145   2            M = 1;
+ 146   2      //    lcd_pos(0xcf);
+ 147   2      //    LCD_Write_Data(display[D]); 
+ 148   2        }
+ 149   1        EX0 = 1;
+ 150   1      }
+ 151          
+ 152          void Show_num(uint16_t d)
+ 153          {
+ 154   1        switch(d)
+ 155   1        {
+ 156   2           case 1:
+ 157   2           display1[0] = Get_dis()%10;
+ 158   2           display1[1] = (Get_dis()/10)%10;
+ 159   2           display1[2] = Get_dis()/100;
+ 160   2           LCD_Write_Com(0x40);
+ 161   2           LCD_Write_Data(display1[2]);
+ 162   2           LCD_Write_Data(display1[1]);
+ 163   2           LCD_Write_Data(display1[0]);
+ 164   2           break;
+ 165   2           
+ 166   2           case 2:
+ 167   2           display2[0] = Get_dis()%10;
+ 168   2           display2[1] = (Get_dis()/10)%10;
+ 169   2           display2[2] = Get_dis()/100;
+ 170   2           LCD_Write_Com(0x45);
+ 171   2           LCD_Write_Data(display2[2]);
+ 172   2           LCD_Write_Data(display2[1]);
+ 173   2           LCD_Write_Data(display2[0]);
+ 174   2           break;
+ 175   2           
+ 176   2           case 3:
+ 177   2           display3[0] = Get_dis()%10;
+ 178   2           display3[1] = (Get_dis()/10)%10;
+ 179   2           display3[2] = Get_dis()/100;
+C51 COMPILER V9.00   1602                                                                  05/17/2015 17:52:54 PAGE 4   
+
+ 180   2           LCD_Write_Com(0x49);
+ 181   2           LCD_Write_Data(display3[2]);
+ 182   2           LCD_Write_Data(display3[1]);
+ 183   2           LCD_Write_Data(display3[0]);
+ 184   2           break;
+ 185   2        }
+ 186   1      }
+ 187          
+ 188          void C_point(void)
+ 189          {
+ 190   1        uint16_t t;
+ 191   1        EN1 = 0;
+ 192   1        EN2 = 0;
+ 193   1        for(t=0;t<5;t++)
+ 194   1        {
+ 195   2        delay_timer_ms(1000);
+ 196   2        }
+ 197   1        EN1 = 1;
+ 198   1        EN2 = 1;
+ 199   1        flag = 1;
+ 200   1      }
+ 201          
+ 202          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    523    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =     21       2
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

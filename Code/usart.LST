@@ -1,0 +1,74 @@
+C51 COMPILER V9.00   USART                                                                 05/17/2015 17:52:53 PAGE 1   
+
+
+C51 COMPILER V9.00, COMPILATION OF MODULE USART
+OBJECT MODULE PLACED IN usart.OBJ
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE usart.c COMPACT BROWSE DEBUG OBJECTEXTEND TABS(2)
+
+line level    source
+
+   1          #include <STC12C5A.H>
+   2          #include "usart.h"
+   3          
+   4          //#define FOSC    11059200L   //¾§ÕñÆµÂÊ 11.0582MHz
+   5          //#define BAUD    115200      //´®¿Ú²¨ÌØÂÊ ¿ÉÉèÎª19200¡¢9600µÈ
+   6          
+   7          bit usart1_busy=0;        //´®¿Ú·¢ËÍÍê³É±êÖ¾
+   8          bit usart1_RI = 0;        //´®¿Ú½ÓÊÕÍê³É±êÖ¾
+   9          uint8_t usart1_data;      //´®¿Ú½ÓÊÕÊý¾Ý
+  10          
+  11          void usart_init()
+  12          {
+  13   1        SCON = 0x50;          //Ä£Ê½1£,8Î»¡¢²¨ÌØÂÊ¿É±ä
+  14   1        BRT = 256 - FOSC/BAUD/32;   //¶ÀÁ¢¼ÆÊýÆ÷³õÖµ
+  15   1        AUXR |= 0x15;         //¶ÀÁ¢²¨ÌØÂÊ¼ÆÊýÆ÷Îª1TÄ£Ê½£¬ÓÃÓÚUSART1£¬Æô¶¯¼ÆÊý
+  16   1        ES = 1;             //¿ª´®¿ÚÖÐ¶Ï
+  17   1      }
+  18          
+  19          
+  20          void T_sbuf(uint8_t chr)
+  21          {
+  22   1        uint8_t t=0xff;
+  23   1        while(usart1_busy && t--);
+  24   1        SBUF = chr;
+  25   1        usart1_busy=1;
+  26   1      }
+  27          
+  28          void my_printf(uint8_t *str)
+  29          {
+  30   1        do
+  31   1        {
+  32   2          T_sbuf(*str);
+  33   2        }while(*(str++)!='\0');
+  34   1      }
+  35          
+  36          void Uart1_handle(void) interrupt 4
+  37          {
+  38   1        if(RI)
+  39   1        {
+  40   2          RI = 0;
+  41   2          usart1_RI = 1;
+  42   2          usart1_data = SBUF;
+  43   2        }
+  44   1        if(TI)
+  45   1        {
+  46   2          TI = 0;
+  47   2          usart1_busy=0;
+  48   2        }
+  49   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    113    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+C51 COMPILER V9.00   USART                                                                 05/17/2015 17:52:53 PAGE 2   
+
+   PDATA SIZE       =      1       3
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      2    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

@@ -1,0 +1,156 @@
+C51 COMPILER V9.00   TIMER                                                                 05/17/2015 17:52:53 PAGE 1   
+
+
+C51 COMPILER V9.00, COMPILATION OF MODULE TIMER
+OBJECT MODULE PLACED IN timer.OBJ
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE timer.c COMPACT BROWSE DEBUG OBJECTEXTEND TABS(2)
+
+line level    source
+
+   1          #include <STC12C5A.H>
+   2          #include <INTRINS.h>
+   3          #include "timer.h"
+   4          #include "usart.h"
+   5          #include "1602.h"
+   6          #include "stdio.h"
+   7          #include "yundong.h"
+   8          
+   9          uint8_t PWM1_val=0,PWM2_val=0,PWM1_set=11,PWM2_set=11;
+  10          extern uint32_t dis;
+  11          uint32_t step;
+  12          uint32_t sys_tm = 0,System_us = 0;
+  13          uint16_t miao;
+  14           
+  15          uint16_t cout1,cout2,cout3;
+  16          uint8_t xdata str_buf[256];
+  17           
+  18          extern uint8_t display[];
+  19          void timer1_init()
+  20          {
+  21   1        TMOD &= 0x0f;
+  22   1        TMOD |= 0x10;         //模式1,16位定时器
+  23   1        AUXR |= 0x40;         //1T模式
+  24   1        TH1 = (65536-FOSC*tm)>>8;   //1T模式初值
+  25   1        TL1 = (65536-FOSC*tm);
+  26   1        TR1 = 1;            //启动定时器0计数
+  27   1        ET1 = 1;            //开定时器0中断
+  28   1        PT1 = 1;            //
+  29   1      }
+  30          
+  31          void delay_timer_ms(uint16_t ms)  
+  32          {
+  33   1        uint32_t val=sys_tm+ms;
+  34   1        while(sys_tm<=val)
+  35   1          _nop_();
+  36   1      }
+  37          
+  38          
+  39          void pand(void)
+  40          {
+  41   1        if(EN1 == 0)
+  42   1        {     
+  43   2          if(EN2 == 1) 
+  44   2            cout1++;    //左转
+  45   2        }
+  46   1        else
+  47   1        {
+  48   2          if(EN2 == 0) 
+  49   2            cout2++;    //右转
+  50   2          if(EN2 == 1 && PWM1_set == PWM2_set)
+  51   2            cout3++;    //直走
+  52   2        }
+  53   1      }
+  54          
+  55          
+C51 COMPILER V9.00   TIMER                                                                 05/17/2015 17:52:53 PAGE 2   
+
+  56          void Timer1_handle(void) interrupt 3
+  57          {
+  58   1        static uint8_t tm_flag;
+  59   1        System_us++;
+  60   1        tm_flag = (tm_flag+1)%5;
+  61   1        TH1 = (65536 - FOSC*tm)>>8;
+  62   1        TL1 = 65536 - FOSC*tm;
+  63   1        if(!tm_flag)
+  64   1          sys_tm++;
+  65   1        PWM1_val = (PWM1_val+1)%PWM1_set;
+  66   1        PWM2_val = (PWM2_val+1)%PWM2_set;
+  67   1        if(!PWM1_val)
+  68   1        { 
+  69   2          CLK1 = !CLK1;
+  70   2        }
+  71   1        if(!PWM2_val)
+  72   1        {
+  73   2          CLK2 = !CLK2;
+  74   2          pand();
+  75   2        }
+  76   1        if(System_us == 5000)
+  77   1        {
+  78   2          miao++;
+  79   2          System_us = 0;
+  80   2      //    sprintf(str_buf,"The Receve char is:%d\r\n",miao);
+  81   2      //    my_printf(str_buf);
+  82   2        }
+  83   1      }
+  84          
+  85            
+  86          void ShiZhong()   //显示时钟
+  87          {
+  88   1        uint8_t i,j;
+  89   1      //  if(System_us == 5000)
+  90   1      //  {
+  91   1      //    miao++;
+  92   1      //    System_us = 0;
+  93   1      //  }
+  94   1        if(99 == miao)
+  95   1          miao = 0;
+  96   1        i = miao%10;  //显示函数
+  97   1        j = miao/10;  
+  98   1      //  sprintf(str_buf,"The Receve char is:%d\r\n",miao);
+  99   1      //  my_printf(str_buf);
+ 100   1      //  LCD_Write_Com(0xcc);
+ 101   1      //  LCD_Write_Data(display[j]);
+ 102   1      //  LCD_Write_Data(display[i]);
+ 103   1      }
+ 104          
+ 105          
+ 106          
+ 107          void Set_PWM1(uint8_t val)  //val用于调节速度，越小速度越大 最慢250，最快3
+ 108          {
+ 109   1        PWM1_set = val;
+ 110   1      }
+ 111          
+ 112          void Set_PWM2(uint8_t val)  //val用于调节速度，越小速度越大
+ 113          {
+ 114   1        PWM2_set = val;
+ 115   1      }
+ 116          
+ 117          uint32_t Get_dis(void)
+C51 COMPILER V9.00   TIMER                                                                 05/17/2015 17:52:53 PAGE 3   
+
+ 118          {
+ 119   1        dis = (11*step)/100;
+ 120   1        return dis;
+ 121   1      }
+ 122          
+ 123          
+ 124          uint32_t Get_miao()
+ 125          {
+ 126   1        return miao;
+ 127   1      }
+ 128          
+ 129          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    517    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =    256    ----
+   PDATA SIZE       =     25       6
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

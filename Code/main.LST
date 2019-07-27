@@ -1,0 +1,115 @@
+C51 COMPILER V9.00   MAIN                                                                  05/17/2015 18:24:18 PAGE 1   
+
+
+C51 COMPILER V9.00, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN main.OBJ
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE main.c COMPACT BROWSE DEBUG OBJECTEXTEND TABS(2)
+
+line level    source
+
+   1          #include <STC12C5A.H>
+   2          #include <INTRINS.h>
+   3          #include "stdio.h"
+   4          #include "string.h"
+   5          #include "usart.h"
+   6          #include "timer.h"
+   7          #include "PWM.h"
+   8          #include "1602.h"
+   9          #include "find_road.h"
+  10          #include "yundong.h"
+  11          #include "CEJU.h"
+  12          
+  13          uint32_t flag = 0;
+  14          uint32_t dis;
+  15          sbit K1 = P1^7;
+  16          
+  17          uint8_t port = 1,port1 = 2,port2 = 3,port3 = 4;
+  18          
+  19          //extern bit usart1_RI;
+  20          //extern uint8_t usart1_data;
+  21          ////extern uint16_t D ;
+  22          //extern uint32_t miao;
+  23          //extern uint32_t System_us;
+  24          
+  25          uint8_t flag1 = 0,flag2 = 0,flag3 = 0,flag4 = 0;
+  26          uint16_t M = 0,M1 = 1,M2 = 2;
+  27          
+  28          uint8_t xdata str_buf1[128];
+  29          
+  30          
+  31          void CPU_int()
+  32          {
+  33   1        timer1_init();
+  34   1        usart_init();
+  35   1        InitUltrasonicDistance();
+  36   1        PWM_init();
+  37   1      
+  38   1        LCD_Init();     //1602初始化
+  39   1        LCD_Clear();
+  40   1      }
+  41          
+  42          
+  43          
+  44          void main(void)
+  45          { 
+  46   1        CPU_int();  
+  47   1        EN1 = 1;
+  48   1        EN2 = 1;
+  49   1        EX0 = 1;  //使能外部中断0
+  50   1        EX1 = 1;  //使能外部中断1
+  51   1        IT0 = 1;  //设置外部中断0为下降沿触发
+  52   1        IT1 = 1;  //设置外部中断1为下降沿触发
+  53   1        PX0 = 1;  //设置外部中断0优先级为高
+  54   1        PX1 = 0;  //设置外部中断1优先级为低
+  55   1        
+C51 COMPILER V9.00   MAIN                                                                  05/17/2015 18:24:18 PAGE 2   
+
+  56   1        EA = 1; 
+  57   1        
+  58   1        EN1 = 0;
+  59   1        EN2 = 0;  
+  60   1        H_F1 = 0;     //全步
+  61   1        CW1 = 0;      //正转  
+  62   1        H_F2 = 0;     //全步
+  63   1        CW2 = 1;      //反转  
+  64   1        
+  65   1        CLK1 = 1;
+  66   1        CLK2 = 1;
+  67   1        while(1)
+  68   1        {   
+  69   2          if(!flag)
+  70   2          {
+  71   3            if(!M)
+  72   3            {
+  73   4              find_road();
+  74   4            }
+  75   3            else
+  76   3            {
+  77   4              C_point();  
+  78   4            }       
+  79   3          }
+  80   2          else
+  81   2          {
+  82   3            if(0 == flag2)
+  83   3              chaoshengbo();            
+  84   3            else  
+  85   3              chaoshengbo_2();  
+  86   3          }
+  87   2          ShiZhong();
+  88   2        }
+  89   1      }
+  90          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    111    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =    128    ----
+   PDATA SIZE       =     22    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
